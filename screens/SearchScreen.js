@@ -1,66 +1,84 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Importar AsyncStorage
 
-const SearchScreen = () => {
-  const [searchType, setSearchType] = useState('game'); // Estado para el tipo de búsqueda (juego, plataforma, usuario)
-  const [searchQuery, setSearchQuery] = useState('');
+const HomeScreen = () => {
+  const [feed, setFeed] = useState([]); // Estado para almacenar los datos del feed
+  const [searchQuery, setSearchQuery] = useState(''); // Estado para almacenar la consulta de búsqueda
+  const [token, setToken] = useState(''); // Estado para almacenar el token
 
-  const handleSearchChange = (text) => {
-    setSearchQuery(text);
+  // Función para obtener el token desde AsyncStorage
+  const loadToken = async () => {
+    const storedToken = await AsyncStorage.getItem('access_token');
+    if (storedToken) {
+      setToken(storedToken);
+    }
   };
+
+  // Función para realizar la búsqueda de juegos
+  const fetchSearchResults = async () => {
+    if (!searchQuery.trim()) {
+      Alert.alert('Error', 'Por favor ingrese un término de búsqueda');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://flask-t80g.onrender.com/search_game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ gamename: searchQuery }), // Enviar gamename en el cuerpo de la solicitud
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFeed(data.Resultados); // Guardar los resultados de búsqueda en el estado
+      } else {
+        Alert.alert('Error', data.msg || 'No se pudieron obtener los resultados');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Hubo un problema al obtener los resultados');
+    }
+  };
+
+  // Llamar a la función al montar el componente para cargar el token
+  React.useEffect(() => {
+    loadToken();
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Búsqueda de Juegos</Text>
+      <Text style={styles.header}>Buscar Juego</Text>
 
-      {/* Filtros de búsqueda */}
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterButton, searchType === 'game' && styles.activeFilter]}
-          onPress={() => setSearchType('game')}
-        >
-          <Text style={styles.filterText}>Juego</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, searchType === 'platform' && styles.activeFilter]}
-          onPress={() => setSearchType('platform')}
-        >
-          <Text style={styles.filterText}>Plataforma</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterButton, searchType === 'user' && styles.activeFilter]}
-          onPress={() => setSearchType('user')}
-        >
-          <Text style={styles.filterText}>Usuario</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Barra de búsqueda */}
+      {/* Campo de texto para la búsqueda */}
       <TextInput
         style={styles.searchInput}
-        placeholder={`Buscar por ${searchType}...`}
+        placeholder="Busca un juego"
+        placeholderTextColor="#888"
         value={searchQuery}
-        onChangeText={handleSearchChange}
-        placeholderTextColor="#aaa"
+        onChangeText={setSearchQuery}
       />
 
-      {/* Resultados de búsqueda (simulados por ahora) */}
-      <ScrollView style={styles.resultsContainer}>
-        <Text style={styles.resultsText}>Resultados para: "{searchQuery}"</Text>
-        {/* Aquí agregarías la lógica para mostrar los resultados dependiendo del tipo de búsqueda */}
-        <View style={styles.card}>
-          <Text style={styles.cardText}>Ejemplo de {searchType} 1</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.cardText}>Ejemplo de {searchType} 2</Text>
-        </View>
-      </ScrollView>
-
-      {/* Icono de búsqueda (opcional, podría hacer la búsqueda) */}
-      <TouchableOpacity style={styles.searchButton}>
+      {/* Botón de búsqueda */}
+      <TouchableOpacity style={styles.searchButton} onPress={fetchSearchResults}>
         <Ionicons name="search" size={30} color="#fff" />
       </TouchableOpacity>
+
+      {/* Resultados de la búsqueda */}
+      <ScrollView style={styles.cardsContainer}>
+        {feed.map((game, index) => (
+          <View key={index} style={styles.card}>
+            <Text style={styles.cardTitle}>{game.gamename || 'Nombre no disponible'}</Text>
+            <Text style={styles.cardText}>Plataforma: {game.platform || 'No especificado'}</Text>
+            <Text style={styles.cardText}>Precio: ${game.price != null ? game.price : 'No especificado'}</Text>
+            <Text style={styles.cardText}>Contacto: {game.email || 'Correo no disponible'}</Text>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 };
@@ -77,43 +95,25 @@ const styles = StyleSheet.create({
     color: '#FF4500', // Naranja Samus
     marginBottom: 20,
   },
-  filterContainer: {
-    flexDirection: 'row',
+  searchInput: {
+    height: 40,
+    borderColor: '#FF4500',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingLeft: 10,
+    color: '#fff',
     marginBottom: 20,
   },
-  filterButton: {
-    flex: 1,
-    padding: 10,
-    borderWidth: 2,
-    borderColor: '#FF4500', // Naranja Samus
-    borderRadius: 10,
-    marginHorizontal: 5,
+  searchButton: {
+    backgroundColor: '#FF4500', // Naranja Samus
+    padding: 15,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  activeFilter: {
-    backgroundColor: '#FF4500',
-  },
-  filterText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  searchInput: {
-    height: 50,
-    backgroundColor: '#333',
-    color: '#fff',
-    borderRadius: 10,
-    paddingLeft: 15,
-    fontSize: 18,
     marginBottom: 20,
   },
-  resultsContainer: {
+  cardsContainer: {
     flex: 1,
-  },
-  resultsText: {
-    fontSize: 18,
-    color: '#FF4500', // Naranja Samus
-    marginBottom: 10,
   },
   card: {
     backgroundColor: '#222',
@@ -123,21 +123,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FF4500', // Naranja Samus
   },
+  cardTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
   cardText: {
     color: '#fff',
-    fontSize: 16,
-  },
-  searchButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#FF4500', // Naranja Samus
-    padding: 15,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontSize: 14,
+    marginBottom: 5,
   },
 });
 
-export default SearchScreen;
-
+export default HomeScreen;

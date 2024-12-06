@@ -1,49 +1,73 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const UpdateScreen = () => {
-  const [gameTitle, setGameTitle] = useState('');
+  const [gameName, setGameName] = useState('');
   const [platform, setPlatform] = useState('');
-  const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  
-  const handleSubmit = () => {
-    // Lógica para subir el juego
+  const [token, setToken] = useState('');
+
+  // Cargar el token almacenado en AsyncStorage
+  const loadToken = async () => {
+    const storedToken = await AsyncStorage.getItem('access_token');
+    if (storedToken) {
+      setToken(storedToken);
+    }
+  };
+
+  useEffect(() => {
+    loadToken();
+  }, []);
+
+  // Función para subir un juego
+  const handleSubmit = async () => {
+    try {
+      const response = await fetch('https://flask-t80g.onrender.com/rgame', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          gamename: gameName,
+          platform: platform,
+          price: price,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Alert.alert('Éxito', data.msg);
+        setGameName('');
+        setPlatform('');
+        setPrice('');
+      } else {
+        Alert.alert('Error', data.msg || 'No se pudo subir el juego');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Hubo un problema al conectar con el servidor');
+    }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.header}>Subir Juego</Text>
-      
-      {/* Selección de foto */}
-      <TouchableOpacity style={styles.imagePicker}>
-        <Ionicons name="image" size={50} color="#FF4500" />
-        <Text style={styles.imageText}>Seleccionar Foto</Text>
-      </TouchableOpacity>
 
       <TextInput
         style={styles.input}
         placeholder="Título del Juego"
-        value={gameTitle}
-        onChangeText={setGameTitle}
+        value={gameName}
+        onChangeText={setGameName}
         placeholderTextColor="#aaa"
       />
-      
+
       <TextInput
         style={styles.input}
         placeholder="Plataforma"
         value={platform}
         onChangeText={setPlatform}
-        placeholderTextColor="#aaa"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Descripción"
-        value={description}
-        onChangeText={setDescription}
         placeholderTextColor="#aaa"
       />
 
@@ -56,26 +80,17 @@ const UpdateScreen = () => {
         keyboardType="numeric"
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Número de Contacto"
-        value={contactNumber}
-        onChangeText={setContactNumber}
-        placeholderTextColor="#aaa"
-        keyboardType="phone-pad"
-      />
-
       <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
         <Text style={styles.submitButtonText}>Subir Juego</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#121212', // Fondo oscuro
     padding: 20,
   },
   header: {
@@ -83,20 +98,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FF4500', // Naranja Samus
     marginBottom: 20,
-  },
-  imagePicker: {
-    alignItems: 'center',
-    marginBottom: 20,
-    padding: 20,
-    backgroundColor: '#222',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FF4500', // Naranja Samus
-  },
-  imageText: {
-    color: '#FF4500',
-    marginTop: 10,
-    fontSize: 18,
   },
   input: {
     height: 50,
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   submitButton: {
-    backgroundColor: '#FF4500',
+    backgroundColor: '#FF4500', // Naranja Samus
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
